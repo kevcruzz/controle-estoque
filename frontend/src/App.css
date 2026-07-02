@@ -1,0 +1,240 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #0f172a;
+  color: #e2e8f0;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.cabecalho {
+  margin-bottom: 2rem;
+}
+
+.cabecalho h1 {
+  font-size: 2rem;
+  color: #f8fafc;
+}
+
+.cabecalho p {
+  color: #94a3b8;
+  margin-top: 0.25rem;
+}
+
+.secao {
+  background-color: #1e293b;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.secao h2 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  color: #f8fafc;
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabela th {
+  text-align: left;
+  padding: 0.75rem;
+  border-bottom: 2px solid #334155;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
+.tabela td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #334155;
+}
+
+.tabela tr:last-child td {
+  border-bottom: none;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.badge-ok {
+  background-color: #064e3b;
+  color: #6ee7b7;
+}
+
+.badge-baixo {
+  background-color: #7f1d1d;
+  color: #fca5a5;
+}
+
+.formulario {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.campo label {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.campo input,
+.campo select {
+  padding: 0.6rem;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background-color: #0f172a;
+  color: #e2e8f0;
+  font-size: 0.95rem;
+}
+
+.campo input:focus,
+.campo select:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.botao {
+  padding: 0.65rem 1.25rem;
+  border-radius: 8px;
+  border: none;
+  background-color: #3b82f6;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.botao:hover {
+  background-color: #2563eb;
+}
+
+.erro {
+  color: #fca5a5;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.botao-excluir {
+  padding: 0.35rem 0.7rem;
+  border-radius: 6px;
+  border: none;
+  background-color: #7f1d1d;
+  color: #fca5a5;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.botao-excluir:hover {
+  background-color: #991b1b;
+  color: white;
+}
+
+.graficos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.grafico {
+  background-color: #0f172a;
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.grafico h3 {
+  color: #f8fafc;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.login-card {
+  background-color: #1e293b;
+  border-radius: 12px;
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 380px;
+}
+
+.login-card h1 {
+  font-size: 1.5rem;
+  color: #f8fafc;
+  text-align: center;
+}
+
+.login-card p {
+  color: #94a3b8;
+  text-align: center;
+  margin: 0.5rem 0 1.5rem;
+}
+
+.login-card .campo {
+  margin-bottom: 1rem;
+}
+
+.login-card .botao {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.usuario-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.botao-sair {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background-color: transparent;
+  color: #e2e8f0;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.botao-sair:hover {
+  background-color: #334155;
+}

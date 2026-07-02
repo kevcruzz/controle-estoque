@@ -6,13 +6,18 @@ from sqlmodel import Session, select, update
 from app.database import get_session
 from app.models import Movimentacao, Produto, TipoMovimentacao
 from app.schemas import MovimentacaoCriar, MovimentacaoLer
+from app.security import usuario_atual, exigir_papel
+from app.websocket import gerenciador
 
 router = APIRouter(prefix="/movimentacoes", tags=["Movimentações"])
 
 
 @router.post("/", response_model=MovimentacaoLer)
-def criar_movimentacao(dados: MovimentacaoCriar, session: Session = Depends(get_session)):
-    # 1. Validações básicas de entrada
+async def criar_movimentacao (
+    dados: MovimentacaoCriar,
+    session: Session = Depends(get_session),
+    usuario: dict = Depends(exigir_papel("admin", "operador")),
+):
     if dados.quantidade <= 0:
         raise HTTPException(status_code=400, detail="A quantidade deve ser maior que zero")
 
@@ -20,7 +25,6 @@ def criar_movimentacao(dados: MovimentacaoCriar, session: Session = Depends(get_
     if produto is None:
         raise HTTPException(status_code=404, detail="Produto não encontrado")
 
-    # 2. Atualizar o saldo de forma ATÔMICA e SEGURA contra concorrência
     if dados.tipo == TipoMovimentacao.entrada:
         comando = (
             update(Produto)
@@ -28,7 +32,7 @@ def criar_movimentacao(dados: MovimentacaoCriar, session: Session = Depends(get_
             .values(saldo=Produto.saldo + dados.quantidade)
         )
         session.exec(comando)
-    else:  # saída
+    else:
         comando = (
             update(Produto)
             .where(Produto.id == dados.produto_id)
@@ -43,7 +47,6 @@ def criar_movimentacao(dados: MovimentacaoCriar, session: Session = Depends(get_
                 detail="Saldo insuficiente para a saída",
             )
 
-    # 3. Registrar a movimentação no histórico (ledger)
     movimentacao = Movimentacao(
         produto_id=dados.produto_id,
         tipo=dados.tipo,
@@ -52,9 +55,11 @@ def criar_movimentacao(dados: MovimentacaoCriar, session: Session = Depends(get_
     )
     session.add(movimentacao)
 
-    # 4. Confirmar tudo de uma vez (saldo + movimentação na mesma transação)
     session.commit()
     session.refresh(movimentacao)
+
+    await gerenciador.avisar_todos("estoque_atualizado")
+    
     return movimentacao
 
 
@@ -62,6 +67,7 @@ def criar_movimentacao(dados: MovimentacaoCriar, session: Session = Depends(get_
 def listar_movimentacoes(
     produto_id: Optional[int] = None,
     session: Session = Depends(get_session),
+    usuario: dict = Depends(usuario_atual),
 ):
     consulta = select(Movimentacao).order_by(Movimentacao.criado_em.desc())
 
