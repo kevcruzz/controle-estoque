@@ -1,12 +1,16 @@
+import os
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
 import jwt
+from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
+load_dotenv()
+
 # ATENÇÃO: em produção, esta chave deve vir de uma variável de ambiente!
-CHAVE_SECRETA = "troque-esta-chave-por-uma-bem-secreta-e-aleatoria"
+CHAVE_SECRETA = os.getenv("CHAVE_SECRETA", "chave-insegura-apenas-dev")
 ALGORITMO = "HS256"
 EXPIRA_MINUTOS = 60 * 8  # 8 horas
 

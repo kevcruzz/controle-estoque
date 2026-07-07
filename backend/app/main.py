@@ -1,4 +1,8 @@
+import os
+from dotenv import load_dotenv
 from contextlib import asynccontextmanager
+
+load_dotenv()
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,9 +35,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Controle de Estoque", lifespan=lifespan)
 
+origens = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=origens,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
