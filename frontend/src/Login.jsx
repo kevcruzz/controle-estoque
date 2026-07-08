@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { API } from "./config";
 
 function Login({ aoEntrar }) {
   const [email, setEmail] = useState("");
@@ -13,7 +14,7 @@ function Login({ aoEntrar }) {
     dados.append("username", email);
     dados.append("password", senha);
 
-    fetch("http://127.0.0.1:8000/auth/login", {
+    fetch(`${API}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: dados,
