@@ -1,9 +1,8 @@
+import { API, WS_URL } from "./config";
 import { useState, useEffect } from "react";
 import "./App.css";
 import Login from "./Login";
 import Graficos from "./Graficos";
-
-const API = "http://127.0.0.1:8000";
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem("token"));
@@ -61,7 +60,7 @@ function App() {
   useEffect(() => {
     if (!token) return;
 
-    const ws = new WebSocket("ws://127.0.0.1:8000/ws");
+    const ws = new WebSocket(WS_URL);
 
     ws.onmessage = (evento) => {
       if (evento.data === "estoque_atualizado") {
