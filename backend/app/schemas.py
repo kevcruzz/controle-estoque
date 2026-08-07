@@ -1,28 +1,28 @@
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
-
+ 
 from sqlmodel import SQLModel
-
+ 
 from app.models import TipoMovimentacao
-
-
+ 
+ 
 class CategoriaCriar(SQLModel):
     nome: str
-
-
+ 
+ 
 class CategoriaLer(SQLModel):
     id: int
     nome: str
-
-
+ 
+ 
 class ProdutoCriar(SQLModel):
     sku: str
     nome: str
     unidade: str = "un"
     estoque_minimo: int = 0
     categoria_id: Optional[int] = None
-
-
+ 
+ 
 class ProdutoLer(SQLModel):
     id: int
     sku: str
@@ -31,15 +31,15 @@ class ProdutoLer(SQLModel):
     estoque_minimo: int
     saldo: int 
     categoria_id: Optional[int]
-
-
+ 
+ 
 class MovimentacaoCriar(SQLModel):
     produto_id: int
     tipo: TipoMovimentacao
     quantidade: int
     motivo: Optional[str] = None
-
-
+ 
+ 
 class MovimentacaoLer(SQLModel):
     id: int
     produto_id: int
@@ -47,3 +47,34 @@ class MovimentacaoLer(SQLModel):
     quantidade: int
     motivo: Optional[str]
     criado_em: datetime
+ 
+ 
+class ItemNotaFiscalCriar(SQLModel):
+    produto_id: int
+    quantidade: int
+    valor_unitario: float
+ 
+ 
+class NotaFiscalCriar(SQLModel):
+    numero: str
+    fornecedor: str
+    data_emissao: Optional[date] = None
+    itens: list[ItemNotaFiscalCriar]
+ 
+ 
+class ItemNotaFiscalLer(SQLModel):
+    id: int
+    produto_id: int
+    quantidade: int
+    valor_unitario: float
+    valor_total: float
+ 
+ 
+class NotaFiscalLer(SQLModel):
+    id: int
+    numero: str
+    fornecedor: str
+    data_emissao: Optional[date]
+    valor_total: float
+    criado_em: datetime
+    itens: list[ItemNotaFiscalLer] = []

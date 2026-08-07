@@ -21,6 +21,17 @@ function App() {
   const [movMotivo, setMovMotivo] = useState("");
   const [erroMov, setErroMov] = useState("");
 
+  // Estados da Nota Fiscal
+  const [nfNumero, setNfNumero] = useState("");
+  const [nfFornecedor, setNfFornecedor] = useState("");
+  const [nfData, setNfData] = useState("");
+  const [nfItens, setNfItens] = useState([
+    { produto_id: "", quantidade: 0, valor_unitario: 0 },
+  ]);
+  const [erroNf, setErroNf] = useState("");
+  const [sucessoNf, setSucessoNf] = useState("");
+  const [notas, setNotas] = useState([]);
+
   // Cabeçalho de autenticação, reaproveitado em todas as requisições
   function authHeaders() {
     return { Authorization: `Bearer ${localStorage.getItem("token")}` };
@@ -50,9 +61,22 @@ function App() {
       .then((dados) => setProdutos(dados));
   }
 
+  function carregarNotas() {
+    fetch(`${API}/notas-fiscais/`, { headers: authHeaders() })
+      .then((resposta) => {
+        if (resposta.status === 401) {
+          sair();
+          return [];
+        }
+        return resposta.json();
+      })
+      .then((dados) => setNotas(dados));
+  }
+
   useEffect(() => {
     if (token) {
       carregarProdutos();
+      carregarNotas();
     }
   }, [token]);
 
@@ -142,6 +166,86 @@ function App() {
       })
       .catch((e) => setErroMov(e.message));
   }
+
+  function adicionarItem() {
+    setNfItens([...nfItens, { produto_id: "", quantidade: 0, valor_unitario: 0 }]);
+  }
+
+  function removerItem(indice) {
+    setNfItens(nfItens.filter((_, i) => i !== indice));
+  }
+
+  function atualizarItem(indice, campo, valor) {
+    const novos = nfItens.map((item, i) =>
+      i === indice ? { ...item, [campo]: valor } : item
+    );
+    setNfItens(novos);
+  }
+
+  function lancarNota() {
+    setErroNf("");
+    setSucessoNf("");
+
+    if (!nfNumero.trim() || !nfFornecedor.trim()) {
+      setErroNf("Preencha o número e o fornecedor da nota");
+      return;
+    }
+
+    for (const item of nfItens) {
+      if (!item.produto_id) {
+        setErroNf("Selecione o produto em todos os itens");
+        return;
+      }
+      if (Number(item.quantidade) <= 0) {
+        setErroNf("A quantidade de cada item deve ser maior que zero");
+        return;
+      }
+    }
+
+    const corpo = {
+      numero: nfNumero,
+      fornecedor: nfFornecedor,
+      data_emissao: nfData || null,
+      itens: nfItens.map((item) => ({
+        produto_id: Number(item.produto_id),
+        quantidade: Number(item.quantidade),
+        valor_unitario: Number(item.valor_unitario),
+      })),
+    };
+
+    fetch(`${API}/notas-fiscais/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(corpo),
+    })
+      .then(async (resposta) => {
+        if (!resposta.ok) {
+          const dados = await resposta.json();
+          throw new Error(dados.detail || "Erro ao lançar a nota");
+        }
+        return resposta.json();
+      })
+      .then((nota) => {
+        setSucessoNf(
+          `Nota ${nota.numero} lançada! Total R$ ${nota.valor_total.toFixed(
+            2
+          )} — estoque atualizado.`
+        );
+        setNfNumero("");
+        setNfFornecedor("");
+        setNfData("");
+        setNfItens([{ produto_id: "", quantidade: 0, valor_unitario: 0 }]);
+        carregarProdutos();
+        carregarNotas();
+      })
+      .catch((e) => setErroNf(e.message));
+  }
+
+  const totalNota = nfItens.reduce(
+    (soma, item) =>
+      soma + Number(item.quantidade) * Number(item.valor_unitario),
+    0
+  );
 
   if (!token) {
     return <Login aoEntrar={aoEntrar} />;
@@ -264,6 +368,153 @@ function App() {
           {erroMov && <p className="erro">{erroMov}</p>}
         </section>
       )}
+
+      {podeMovimentar && (
+        <section className="secao">
+          <h2>Lançar Nota Fiscal</h2>
+          <div className="formulario">
+            <div className="campo">
+              <label>Número da NF</label>
+              <input
+                value={nfNumero}
+                onChange={(e) => setNfNumero(e.target.value)}
+                placeholder="Ex: 12345"
+              />
+            </div>
+            <div className="campo">
+              <label>Fornecedor</label>
+              <input
+                value={nfFornecedor}
+                onChange={(e) => setNfFornecedor(e.target.value)}
+                placeholder="Ex: Autopeças Silva"
+              />
+            </div>
+            <div className="campo">
+              <label>Data de emissão</label>
+              <input
+                type="date"
+                value={nfData}
+                onChange={(e) => setNfData(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <h3>Itens da nota</h3>
+          <table className="tabela">
+            <thead>
+              <tr>
+                <th>Produto</th>
+                <th>Quantidade</th>
+                <th>Valor unitário (R$)</th>
+                <th>Total do item (R$)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {nfItens.map((item, indice) => (
+                <tr key={indice}>
+                  <td>
+                    <select
+                      value={item.produto_id}
+                      onChange={(e) =>
+                        atualizarItem(indice, "produto_id", e.target.value)
+                      }
+                    >
+                      <option value="">Selecione...</option>
+                      {produtos.map((produto) => (
+                        <option key={produto.id} value={produto.id}>
+                          {produto.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      min="0"
+                      value={item.quantidade}
+                      onChange={(e) =>
+                        atualizarItem(indice, "quantidade", e.target.value)
+                      }
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.valor_unitario}
+                      onChange={(e) =>
+                        atualizarItem(indice, "valor_unitario", e.target.value)
+                      }
+                    />
+                  </td>
+                  <td>
+                    {(
+                      Number(item.quantidade) * Number(item.valor_unitario)
+                    ).toFixed(2)}
+                  </td>
+                  <td>
+                    {nfItens.length > 1 && (
+                      <button
+                        className="botao-excluir"
+                        onClick={() => removerItem(indice)}
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <button className="botao" onClick={adicionarItem}>
+            + Adicionar item
+          </button>
+
+          <p className="total-nota">
+            Total da nota: <strong>R$ {totalNota.toFixed(2)}</strong>
+          </p>
+
+          <button className="botao" onClick={lancarNota}>
+            Lançar Nota Fiscal
+          </button>
+
+          {erroNf && <p className="erro">{erroNf}</p>}
+          {sucessoNf && <p className="sucesso">{sucessoNf}</p>}
+        </section>
+      )}
+
+      <section className="secao">
+        <h2>Notas Fiscais Lançadas</h2>
+        {notas.length === 0 ? (
+          <p>Nenhuma nota lançada ainda.</p>
+        ) : (
+          <table className="tabela">
+            <thead>
+              <tr>
+                <th>Número</th>
+                <th>Fornecedor</th>
+                <th>Emissão</th>
+                <th>Itens</th>
+                <th>Valor total (R$)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {notas.map((nota) => (
+                <tr key={nota.id}>
+                  <td>{nota.numero}</td>
+                  <td>{nota.fornecedor}</td>
+                  <td>{nota.data_emissao || "-"}</td>
+                  <td>{nota.itens.length}</td>
+                  <td>{nota.valor_total.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
 
       <section className="secao">
         <h2>Produtos</h2>
