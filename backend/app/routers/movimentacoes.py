@@ -1,34 +1,38 @@
 from typing import Optional
-
+ 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, update
-
-from app.database import get_session
+ 
+from app.database import get_session_tenant
 from app.models import Movimentacao, Produto, TipoMovimentacao
 from app.schemas import MovimentacaoCriar, MovimentacaoLer
 from app.security import usuario_atual, exigir_papel
+from app.tenant import buscar_do_tenant
 from app.websocket import gerenciador
-
-router = APIRouter(prefix="/movimentacoes", tags=["Movimentações"])
-
-
+ 
+router = APIRouter(prefix="/movimentacoes", tags=["Movimentacoes"])
+ 
+ 
 @router.post("/", response_model=MovimentacaoLer)
-async def criar_movimentacao (
+async def criar_movimentacao(
     dados: MovimentacaoCriar,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_session_tenant),
     usuario: dict = Depends(exigir_papel("admin", "operador")),
 ):
+    empresa_id = usuario["empresa_id"]
+ 
     if dados.quantidade <= 0:
         raise HTTPException(status_code=400, detail="A quantidade deve ser maior que zero")
-
-    produto = session.get(Produto, dados.produto_id)
+ 
+    produto = buscar_do_tenant(session, Produto, dados.produto_id, empresa_id)
     if produto is None:
-        raise HTTPException(status_code=404, detail="Produto não encontrado")
-
+        raise HTTPException(status_code=404, detail="Produto nao encontrado")
+ 
     if dados.tipo == TipoMovimentacao.entrada:
         comando = (
             update(Produto)
             .where(Produto.id == dados.produto_id)
+            .where(Produto.empresa_id == empresa_id)
             .values(saldo=Produto.saldo + dados.quantidade)
         )
         session.exec(comando)
@@ -36,6 +40,7 @@ async def criar_movimentacao (
         comando = (
             update(Produto)
             .where(Produto.id == dados.produto_id)
+            .where(Produto.empresa_id == empresa_id)
             .where(Produto.saldo >= dados.quantidade)
             .values(saldo=Produto.saldo - dados.quantidade)
         )
@@ -44,35 +49,39 @@ async def criar_movimentacao (
             session.rollback()
             raise HTTPException(
                 status_code=400,
-                detail="Saldo insuficiente para a saída",
+                detail="Saldo insuficiente para a saida",
             )
-
+ 
     movimentacao = Movimentacao(
+        empresa_id=empresa_id,
         produto_id=dados.produto_id,
         tipo=dados.tipo,
         quantidade=dados.quantidade,
         motivo=dados.motivo,
     )
     session.add(movimentacao)
-
+ 
     session.commit()
     session.refresh(movimentacao)
-
+ 
     await gerenciador.avisar_todos("estoque_atualizado")
-    
+ 
     return movimentacao
-
-
+ 
+ 
 @router.get("/", response_model=list[MovimentacaoLer])
 def listar_movimentacoes(
     produto_id: Optional[int] = None,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_session_tenant),
     usuario: dict = Depends(usuario_atual),
 ):
-    consulta = select(Movimentacao).order_by(Movimentacao.criado_em.desc())
-
+    consulta = (
+        select(Movimentacao)
+        .where(Movimentacao.empresa_id == usuario["empresa_id"])
+        .order_by(Movimentacao.criado_em.desc())
+    )
+ 
     if produto_id is not None:
         consulta = consulta.where(Movimentacao.produto_id == produto_id)
-
-    movimentacoes = session.exec(consulta).all()
-    return movimentacoes
+ 
+    return session.exec(consulta).all()

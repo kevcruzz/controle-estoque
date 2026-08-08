@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, update
  
-from app.database import get_session
+from app.database import get_session_tenant
 from app.models import (
     NotaFiscal,
     ItemNotaFiscal,
@@ -11,6 +11,7 @@ from app.models import (
 )
 from app.schemas import NotaFiscalCriar, NotaFiscalLer, ItemNotaFiscalLer
 from app.security import usuario_atual, exigir_papel
+from app.tenant import buscar_do_tenant
 from app.websocket import gerenciador
  
 router = APIRouter(prefix="/notas-fiscais", tags=["Notas Fiscais"])
@@ -40,9 +41,11 @@ def montar_resposta(nota: NotaFiscal, itens: list[ItemNotaFiscal]) -> NotaFiscal
 @router.post("/", response_model=NotaFiscalLer)
 async def lancar_nota_fiscal(
     dados: NotaFiscalCriar,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_session_tenant),
     usuario: dict = Depends(exigir_papel("admin", "operador")),
 ):
+    empresa_id = usuario["empresa_id"]
+ 
     if not dados.numero.strip():
         raise HTTPException(status_code=400, detail="O número da nota é obrigatório")
     if not dados.fornecedor.strip():
@@ -63,7 +66,7 @@ async def lancar_nota_fiscal(
                 status_code=400,
                 detail="O valor unitário não pode ser negativo",
             )
-        if session.get(Produto, item.produto_id) is None:
+        if buscar_do_tenant(session, Produto, item.produto_id, empresa_id) is None:
             faltando.append(item.produto_id)
  
     if faltando:
@@ -77,6 +80,7 @@ async def lancar_nota_fiscal(
  
     # Cria o cabeçalho da nota (flush garante o id sem fechar a transação)
     nota = NotaFiscal(
+        empresa_id=empresa_id,
         numero=dados.numero,
         fornecedor=dados.fornecedor,
         data_emissao=dados.data_emissao,
@@ -92,6 +96,7 @@ async def lancar_nota_fiscal(
         total_nota += total_item
  
         registro = ItemNotaFiscal(
+            empresa_id=empresa_id,
             nota_fiscal_id=nota.id,
             produto_id=item.produto_id,
             quantidade=item.quantidade,
@@ -105,12 +110,14 @@ async def lancar_nota_fiscal(
         session.exec(
             update(Produto)
             .where(Produto.id == item.produto_id)
+            .where(Produto.empresa_id == empresa_id)
             .values(saldo=Produto.saldo + item.quantidade)
         )
  
         # Registra a entrada no ledger de movimentações
         session.add(
             Movimentacao(
+                empresa_id=empresa_id,
                 produto_id=item.produto_id,
                 tipo=TipoMovimentacao.entrada,
                 quantidade=item.quantidade,
@@ -133,17 +140,21 @@ async def lancar_nota_fiscal(
  
 @router.get("/", response_model=list[NotaFiscalLer])
 def listar_notas(
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_session_tenant),
     usuario: dict = Depends(usuario_atual),
 ):
     notas = session.exec(
-        select(NotaFiscal).order_by(NotaFiscal.criado_em.desc())
+        select(NotaFiscal)
+        .where(NotaFiscal.empresa_id == usuario["empresa_id"])
+        .order_by(NotaFiscal.criado_em.desc())
     ).all()
  
     resposta = []
     for nota in notas:
         itens = session.exec(
-            select(ItemNotaFiscal).where(ItemNotaFiscal.nota_fiscal_id == nota.id)
+            select(ItemNotaFiscal)
+            .where(ItemNotaFiscal.nota_fiscal_id == nota.id)
+            .where(ItemNotaFiscal.empresa_id == usuario["empresa_id"])
         ).all()
         resposta.append(montar_resposta(nota, itens))
     return resposta
@@ -152,14 +163,16 @@ def listar_notas(
 @router.get("/{nota_id}", response_model=NotaFiscalLer)
 def obter_nota(
     nota_id: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_session_tenant),
     usuario: dict = Depends(usuario_atual),
 ):
-    nota = session.get(NotaFiscal, nota_id)
+    nota = buscar_do_tenant(session, NotaFiscal, nota_id, usuario["empresa_id"])
     if nota is None:
         raise HTTPException(status_code=404, detail="Nota fiscal não encontrada")
  
     itens = session.exec(
-        select(ItemNotaFiscal).where(ItemNotaFiscal.nota_fiscal_id == nota_id)
+        select(ItemNotaFiscal)
+        .where(ItemNotaFiscal.nota_fiscal_id == nota_id)
+        .where(ItemNotaFiscal.empresa_id == usuario["empresa_id"])
     ).all()
     return montar_resposta(nota, itens)

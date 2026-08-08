@@ -1,4 +1,3 @@
-
 import os
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
@@ -7,34 +6,56 @@ load_dotenv()
  
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from sqlmodel import Session, select
  
-from app.database import criar_tabelas, engine
+from app.database import criar_tabelas, aplicar_rls, engine, USA_POSTGRES
 from app import models
-from app.models import Usuario
+from app.models import Usuario, Empresa
 from app.security import gerar_hash_senha
-from app.routers import categorias, produtos, movimentacoes, auth, notas_fiscais
+from app.routers import (
+    categorias,
+    produtos,
+    movimentacoes,
+    auth,
+    notas_fiscais,
+    empresas,
+)
 from app.websocket import gerenciador
  
  
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     criar_tabelas()
-    # Cria um usuário admin inicial, se ainda não houver nenhum usuário
+    aplicar_rls()
+ 
+    # Empresa e admin de demonstracao, apenas se o banco estiver vazio
     with Session(engine) as session:
-        existe = session.exec(select(Usuario)).first()
-        if existe is None:
-            admin = Usuario(
-                email="admin@estoque.com",
-                senha_hash=gerar_hash_senha("admin123"),
-                papel="admin",
+        if session.exec(select(Empresa)).first() is None:
+            demo = Empresa(nome="Empresa Demonstracao")
+            session.add(demo)
+            session.flush()
+ 
+            if USA_POSTGRES:
+                session.exec(
+                    text("SELECT set_config('app.empresa_id', :valor, true)").bindparams(
+                        valor=str(demo.id)
+                    )
+                )
+ 
+            session.add(
+                Usuario(
+                    empresa_id=demo.id,
+                    email="admin@estoque.com",
+                    senha_hash=gerar_hash_senha("admin123"),
+                    papel="admin",
+                )
             )
-            session.add(admin)
             session.commit()
     yield
  
  
-app = FastAPI(title="Controle de Estoque", lifespan=lifespan)
+app = FastAPI(title="KFuture ERP", lifespan=lifespan)
  
 origens = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
  
@@ -51,6 +72,7 @@ app.include_router(categorias.router)
 app.include_router(produtos.router)
 app.include_router(movimentacoes.router)
 app.include_router(notas_fiscais.router)
+app.include_router(empresas.router)
  
  
 @app.get("/health")

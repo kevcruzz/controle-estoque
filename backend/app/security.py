@@ -1,36 +1,41 @@
 import os
 from datetime import datetime, timedelta, timezone
-
+ 
 import bcrypt
 import jwt
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-
+ 
 load_dotenv()
-
+ 
 # ATENÇÃO: em produção, esta chave deve vir de uma variável de ambiente!
 CHAVE_SECRETA = os.getenv("CHAVE_SECRETA", "chave-insegura-apenas-dev")
 ALGORITMO = "HS256"
 EXPIRA_MINUTOS = 60 * 8  # 8 horas
-
+ 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-
-
+ 
+ 
 def gerar_hash_senha(senha: str) -> str:
     return bcrypt.hashpw(senha.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-
+ 
+ 
 def verificar_senha(senha: str, hash_armazenado: str) -> bool:
     return bcrypt.checkpw(senha.encode("utf-8"), hash_armazenado.encode("utf-8"))
-
-
-def criar_token(email: str, papel: str) -> str:
+ 
+ 
+def criar_token(email: str, papel: str, empresa_id: int) -> str:
     expira = datetime.now(timezone.utc) + timedelta(minutes=EXPIRA_MINUTOS)
-    payload = {"sub": email, "papel": papel, "exp": expira}
+    payload = {
+        "sub": email,
+        "papel": papel,
+        "empresa_id": empresa_id,
+        "exp": expira,
+    }
     return jwt.encode(payload, CHAVE_SECRETA, algorithm=ALGORITMO)
-
-
+ 
+ 
 def usuario_atual(token: str = Depends(oauth2_scheme)) -> dict:
     excecao = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -42,11 +47,17 @@ def usuario_atual(token: str = Depends(oauth2_scheme)) -> dict:
     except jwt.PyJWTError:
         raise excecao
     email = payload.get("sub")
-    if email is None:
+    empresa_id = payload.get("empresa_id")
+    # Sem empresa no token nao ha como isolar os dados: recusa o acesso.
+    if email is None or empresa_id is None:
         raise excecao
-    return {"email": email, "papel": payload.get("papel")}
-
-
+    return {
+        "email": email,
+        "papel": payload.get("papel"),
+        "empresa_id": int(empresa_id),
+    }
+ 
+ 
 def exigir_papel(*papeis_permitidos: str):
     def verificador(usuario: dict = Depends(usuario_atual)) -> dict:
         if usuario["papel"] not in papeis_permitidos:
