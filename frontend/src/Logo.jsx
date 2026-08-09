@@ -11,7 +11,14 @@ function Logo({ tamanho = 40, comTexto = false }) {
         aria-label="KFuture"
       >
         <defs>
-          <linearGradient id="kf-gradiente" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient
+            id="kf-gradiente"
+            gradientUnits="userSpaceOnUse"
+            x1="30"
+            y1="25"
+            x2="85"
+            y2="95"
+          >
             <stop offset="0%" stopColor="#22D3EE" />
             <stop offset="55%" stopColor="#A855F7" />
             <stop offset="100%" stopColor="#E935C1" />
@@ -41,11 +48,11 @@ function Logo({ tamanho = 40, comTexto = false }) {
           strokeLinecap="round"
           fill="none"
         >
-          <path d="M45 33 L45 87" />
-          <path d="M45 61 L75 33" />
-          <path d="M49 63 L77 87" />
+          <path d="M40 32 L40 88" />
+          <path d="M40 62 L72 32" />
+          <path d="M40 62 L74 88" />
         </g>
-        <circle cx="45" cy="61" r="4" fill="#22D3EE" />
+        <circle cx="40" cy="62" r="3.4" fill="#22D3EE" />
       </svg>
  
       {comTexto && (
