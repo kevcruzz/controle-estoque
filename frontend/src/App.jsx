@@ -3,24 +3,25 @@ import { useState, useEffect } from "react";
 import "./App.css";
 import Login from "./Login";
 import Graficos from "./Graficos";
-
+import Logo from "./Logo";
+ 
 function App() {
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [papel, setPapel] = useState(localStorage.getItem("papel"));
-
+ 
   const [produtos, setProdutos] = useState([]);
   const [sku, setSku] = useState("");
   const [nome, setNome] = useState("");
   const [unidade, setUnidade] = useState("un");
   const [estoqueMinimo, setEstoqueMinimo] = useState(0);
   const [erro, setErro] = useState("");
-
+ 
   const [movProdutoId, setMovProdutoId] = useState("");
   const [movTipo, setMovTipo] = useState("entrada");
   const [movQuantidade, setMovQuantidade] = useState(0);
   const [movMotivo, setMovMotivo] = useState("");
   const [erroMov, setErroMov] = useState("");
-
+ 
   // Estados da Nota Fiscal
   const [nfNumero, setNfNumero] = useState("");
   const [nfFornecedor, setNfFornecedor] = useState("");
@@ -31,24 +32,24 @@ function App() {
   const [erroNf, setErroNf] = useState("");
   const [sucessoNf, setSucessoNf] = useState("");
   const [notas, setNotas] = useState([]);
-
+ 
   // Cabeçalho de autenticação, reaproveitado em todas as requisições
   function authHeaders() {
     return { Authorization: `Bearer ${localStorage.getItem("token")}` };
   }
-
+ 
   function aoEntrar(papelUsuario) {
     setToken(localStorage.getItem("token"));
     setPapel(papelUsuario);
   }
-
+ 
   function sair() {
     localStorage.removeItem("token");
     localStorage.removeItem("papel");
     setToken(null);
     setPapel(null);
   }
-
+ 
   function carregarProdutos() {
     fetch(`${API}/produtos/`, { headers: authHeaders() })
       .then((resposta) => {
@@ -60,7 +61,7 @@ function App() {
       })
       .then((dados) => setProdutos(dados));
   }
-
+ 
   function carregarNotas() {
     fetch(`${API}/notas-fiscais/`, { headers: authHeaders() })
       .then((resposta) => {
@@ -72,32 +73,32 @@ function App() {
       })
       .then((dados) => setNotas(dados));
   }
-
+ 
   useEffect(() => {
     if (token) {
       carregarProdutos();
       carregarNotas();
     }
   }, [token]);
-
-
+ 
+ 
   useEffect(() => {
     if (!token) return;
-
+ 
     const ws = new WebSocket(WS_URL);
-
+ 
     ws.onmessage = (evento) => {
       if (evento.data === "estoque_atualizado") {
         carregarProdutos();
       }
     };
-
+ 
     return () => ws.close();
   }, [token]);
-
+ 
   function cadastrarProduto() {
     setErro("");
-
+ 
     fetch(`${API}/produtos/`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -124,7 +125,7 @@ function App() {
       })
       .catch((e) => setErro(e.message));
   }
-
+ 
   function excluirProduto(id) {
     fetch(`${API}/produtos/${id}`, {
       method: "DELETE",
@@ -133,15 +134,15 @@ function App() {
       .then(() => carregarProdutos())
       .catch((e) => setErro(e.message));
   }
-
+ 
   function registrarMovimentacao() {
     setErroMov("");
-
+ 
     if (!movProdutoId) {
       setErroMov("Selecione um produto");
       return;
     }
-
+ 
     fetch(`${API}/movimentacoes/`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -166,31 +167,31 @@ function App() {
       })
       .catch((e) => setErroMov(e.message));
   }
-
+ 
   function adicionarItem() {
     setNfItens([...nfItens, { produto_id: "", quantidade: 0, valor_unitario: 0 }]);
   }
-
+ 
   function removerItem(indice) {
     setNfItens(nfItens.filter((_, i) => i !== indice));
   }
-
+ 
   function atualizarItem(indice, campo, valor) {
     const novos = nfItens.map((item, i) =>
       i === indice ? { ...item, [campo]: valor } : item
     );
     setNfItens(novos);
   }
-
+ 
   function lancarNota() {
     setErroNf("");
     setSucessoNf("");
-
+ 
     if (!nfNumero.trim() || !nfFornecedor.trim()) {
       setErroNf("Preencha o número e o fornecedor da nota");
       return;
     }
-
+ 
     for (const item of nfItens) {
       if (!item.produto_id) {
         setErroNf("Selecione o produto em todos os itens");
@@ -201,7 +202,7 @@ function App() {
         return;
       }
     }
-
+ 
     const corpo = {
       numero: nfNumero,
       fornecedor: nfFornecedor,
@@ -212,7 +213,7 @@ function App() {
         valor_unitario: Number(item.valor_unitario),
       })),
     };
-
+ 
     fetch(`${API}/notas-fiscais/`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -240,27 +241,30 @@ function App() {
       })
       .catch((e) => setErroNf(e.message));
   }
-
+ 
   const totalNota = nfItens.reduce(
     (soma, item) =>
       soma + Number(item.quantidade) * Number(item.valor_unitario),
     0
   );
-
+ 
   if (!token) {
     return <Login aoEntrar={aoEntrar} />;
   }
-
+ 
   const ehAdmin = papel === "admin";
   const podeMovimentar = papel === "admin" || papel === "operador";
-
+ 
   return (
     <div className="container">
       <div className="topo">
-        <header className="cabecalho">
-          <h1>Controle de Estoque</h1>
-          <p>Sistema de gerenciamento de produtos</p>
-        </header>
+        <div className="topo-marca">
+          <Logo tamanho={44} comTexto />
+          <header className="cabecalho">
+            <h1>Estoque e entrada fiscal</h1>
+            <p>Automation &amp; AI</p>
+          </header>
+        </div>
         <div className="usuario-info">
           <span>Papel: {papel}</span>
           <button className="botao-sair" onClick={sair}>
@@ -268,12 +272,12 @@ function App() {
           </button>
         </div>
       </div>
-
+ 
       <section className="secao">
         <h2>Dashboard</h2>
         <Graficos produtos={produtos} />
       </section>
-
+ 
       {ehAdmin && (
         <section className="secao">
           <h2>Cadastrar Produto</h2>
@@ -316,7 +320,7 @@ function App() {
           {erro && <p className="erro">{erro}</p>}
         </section>
       )}
-
+ 
       {podeMovimentar && (
         <section className="secao">
           <h2>Movimentar Estoque</h2>
@@ -368,7 +372,7 @@ function App() {
           {erroMov && <p className="erro">{erroMov}</p>}
         </section>
       )}
-
+ 
       {podeMovimentar && (
         <section className="secao">
           <h2>Lançar Nota Fiscal</h2>
@@ -398,7 +402,7 @@ function App() {
               />
             </div>
           </div>
-
+ 
           <h3>Itens da nota</h3>
           <table className="tabela">
             <thead>
@@ -468,24 +472,24 @@ function App() {
               ))}
             </tbody>
           </table>
-
+ 
           <button className="botao" onClick={adicionarItem}>
             + Adicionar item
           </button>
-
+ 
           <p className="total-nota">
             Total da nota: <strong>R$ {totalNota.toFixed(2)}</strong>
           </p>
-
+ 
           <button className="botao" onClick={lancarNota}>
             Lançar Nota Fiscal
           </button>
-
+ 
           {erroNf && <p className="erro">{erroNf}</p>}
           {sucessoNf && <p className="sucesso">{sucessoNf}</p>}
         </section>
       )}
-
+ 
       <section className="secao">
         <h2>Notas Fiscais Lançadas</h2>
         {notas.length === 0 ? (
@@ -515,7 +519,7 @@ function App() {
           </table>
         )}
       </section>
-
+ 
       <section className="secao">
         <h2>Produtos</h2>
         <table className="tabela">
@@ -565,6 +569,5 @@ function App() {
     </div>
   );
 }
-
+ 
 export default App;
-

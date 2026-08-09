@@ -1,19 +1,20 @@
 import { useState } from "react";
 import { API } from "./config";
-
+import Logo from "./Logo";
+ 
 function Login({ aoEntrar }) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
-
+ 
   function entrar() {
     setErro("");
-
+ 
     // O login usa formato de formulário (não JSON), com campos username e password
     const dados = new URLSearchParams();
     dados.append("username", email);
     dados.append("password", senha);
-
+ 
     fetch(`${API}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -33,22 +34,27 @@ function Login({ aoEntrar }) {
       })
       .catch((e) => setErro(e.message));
   }
-
+ 
   return (
     <div className="login-container">
       <div className="login-card">
-        <h1>Controle de Estoque</h1>
-        <p>Faça login para continuar</p>
-
+        <div className="login-marca">
+          <Logo tamanho={84} />
+          <div style={{ textAlign: "center" }}>
+            <h1>KFuture ERP</h1>
+            <p>Automation &amp; AI</p>
+          </div>
+        </div>
+ 
         <div className="campo">
           <label>E-mail</label>
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="admin@estoque.com"
+            placeholder="voce@empresa.com"
           />
         </div>
-
+ 
         <div className="campo">
           <label>Senha</label>
           <input
@@ -58,15 +64,15 @@ function Login({ aoEntrar }) {
             placeholder="••••••••"
           />
         </div>
-
+ 
         <button className="botao" onClick={entrar}>
           Entrar
         </button>
-
+ 
         {erro && <p className="erro">{erro}</p>}
       </div>
     </div>
   );
 }
-
+ 
 export default Login;

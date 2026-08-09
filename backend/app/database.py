@@ -15,15 +15,23 @@ engine = create_engine(DATABASE_URL, echo=False)
  
 USA_POSTGRES = DATABASE_URL.startswith("postgres")
  
-# Tabelas que guardam dados de cliente e precisam de isolamento por empresa
+# Tabelas que guardam dados de cliente e precisam de isolamento por empresa.
+#
+# "usuario" fica FORA da lista de proposito: o login precisa ler essa tabela
+# antes de saber a qual empresa a pessoa pertence. Com RLS ativo ali, nenhum
+# login funcionaria. Os dados de usuario seguem protegidos pelo filtro de
+# empresa na aplicacao.
 TABELAS_TENANT = [
     "categoria",
     "produto",
     "movimentacao",
     "notafiscal",
     "itemnotafiscal",
-    "usuario",
 ]
+ 
+# Tabelas onde o RLS precisa ficar desligado. A lista existe para DESFAZER
+# uma configuracao anterior que tenha ligado o RLS nelas por engano.
+TABELAS_SEM_RLS = ["usuario"]
  
  
 def criar_tabelas():
@@ -46,7 +54,21 @@ def aplicar_rls():
     if not USA_POSTGRES:
         return
  
+    try:
+        _configurar_rls()
+    except Exception as erro:
+        # O RLS e uma camada extra: o filtro por empresa na aplicacao continua
+        # protegendo os dados. Falhar aqui nao deve impedir a aplicacao de subir.
+        print(f"[AVISO] Nao foi possivel aplicar o RLS: {erro}")
+ 
+ 
+def _configurar_rls():
     with engine.begin() as conexao:
+        for tabela in TABELAS_SEM_RLS:
+            conexao.execute(text(f"DROP POLICY IF EXISTS isolamento_empresa ON {tabela}"))
+            conexao.execute(text(f"ALTER TABLE {tabela} NO FORCE ROW LEVEL SECURITY"))
+            conexao.execute(text(f"ALTER TABLE {tabela} DISABLE ROW LEVEL SECURITY"))
+ 
         for tabela in TABELAS_TENANT:
             conexao.execute(text(f"ALTER TABLE {tabela} ENABLE ROW LEVEL SECURITY"))
             conexao.execute(text(f"ALTER TABLE {tabela} FORCE ROW LEVEL SECURITY"))
