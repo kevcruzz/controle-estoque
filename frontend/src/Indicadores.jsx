@@ -56,6 +56,8 @@ export function Vazio({ mensagem }) {
  
 /* ---------- Indicadores de Estoque ---------- */
 export function IndicadoresEstoque({ produtos }) {
+  produtos = Array.isArray(produtos) ? produtos : [];
+ 
   const totalSkus = produtos.length;
   const unidades = produtos.reduce((s, p) => s + p.saldo, 0);
   const abaixoMinimo = produtos.filter(
@@ -147,6 +149,8 @@ export function IndicadoresEstoque({ produtos }) {
  
 /* ---------- Indicadores Financeiros ---------- */
 export function IndicadoresFinanceiro({ notas }) {
+  notas = Array.isArray(notas) ? notas : [];
+ 
   const quantidade = notas.length;
   const total = notas.reduce((s, n) => s + n.valor_total, 0);
   const ticket = quantidade > 0 ? total / quantidade : 0;
@@ -234,6 +238,12 @@ export function IndicadoresFinanceiro({ notas }) {
  
 /* ---------- Visão geral (executiva) ---------- */
 export function IndicadoresGerais({ produtos, notas, movimentacoes }) {
+  // Defesa: se a API falhar, a prop pode nao ser uma lista. Uma tela de
+  // indicadores nao deve derrubar o sistema por causa disso.
+  produtos = Array.isArray(produtos) ? produtos : [];
+  notas = Array.isArray(notas) ? notas : [];
+  movimentacoes = Array.isArray(movimentacoes) ? movimentacoes : [];
+ 
   // Último preço de compra conhecido de cada produto, tirado das notas.
   // Percorre da nota mais antiga para a mais nova, então o último valor
   // gravado é sempre o mais recente.

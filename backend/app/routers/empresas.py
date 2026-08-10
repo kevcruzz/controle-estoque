@@ -4,7 +4,8 @@ from sqlmodel import Session, SQLModel, select
  
 from app.database import get_session, USA_POSTGRES
 from app.models import Empresa, Usuario
-from app.security import gerar_hash_senha
+from app.security import gerar_hash_senha, usuario_atual, exigir_papel
+from app.database import get_session_tenant
  
 router = APIRouter(prefix="/empresas", tags=["Empresas"])
  
@@ -67,4 +68,54 @@ def cadastrar_empresa(
  
     return EmpresaCriada(
         empresa_id=empresa.id, nome=empresa.nome, email_admin=email
+    )
+ 
+ 
+class EmpresaConfig(SQLModel):
+    id: int
+    nome: str
+    cnpj: str | None = None
+    exige_lote: bool
+ 
+ 
+class EmpresaConfigAlterar(SQLModel):
+    exige_lote: bool
+ 
+ 
+@router.get("/minha", response_model=EmpresaConfig)
+def minha_empresa(
+    session: Session = Depends(get_session_tenant),
+    usuario: dict = Depends(usuario_atual),
+):
+    empresa = session.get(Empresa, usuario["empresa_id"])
+    if empresa is None:
+        raise HTTPException(status_code=404, detail="Empresa nao encontrada")
+    return EmpresaConfig(
+        id=empresa.id,
+        nome=empresa.nome,
+        cnpj=empresa.cnpj,
+        exige_lote=empresa.exige_lote,
+    )
+ 
+ 
+@router.patch("/configuracoes", response_model=EmpresaConfig)
+def alterar_configuracoes(
+    dados: EmpresaConfigAlterar,
+    session: Session = Depends(get_session_tenant),
+    usuario: dict = Depends(exigir_papel("admin")),
+):
+    empresa = session.get(Empresa, usuario["empresa_id"])
+    if empresa is None:
+        raise HTTPException(status_code=404, detail="Empresa nao encontrada")
+ 
+    empresa.exige_lote = dados.exige_lote
+    session.add(empresa)
+    session.commit()
+    session.refresh(empresa)
+ 
+    return EmpresaConfig(
+        id=empresa.id,
+        nome=empresa.nome,
+        cnpj=empresa.cnpj,
+        exige_lote=empresa.exige_lote,
     )

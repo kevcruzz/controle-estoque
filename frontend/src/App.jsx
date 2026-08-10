@@ -64,32 +64,35 @@ function App() {
  
   function carregarProdutos() {
     fetch(`${API}/produtos/`, { headers: authHeaders() })
-      .then((resposta) => {
-        if (resposta.status === 401) {
-          sair();
-          return [];
-        }
-        return resposta.json();
-      })
-      .then((dados) => setProdutos(dados));
+      .then(lerLista)
+      .then(setProdutos)
+      .catch(() => setProdutos([]));
+  }
+ 
+  // Toda resposta de lista passa por aqui. Se a API falhar ou devolver algo
+  // que nao seja uma lista, o estado vira [] em vez de quebrar a tela.
+  function lerLista(resposta) {
+    if (resposta.status === 401) {
+      sair();
+      return [];
+    }
+    if (!resposta.ok) {
+      return [];
+    }
+    return resposta.json().then((dados) => (Array.isArray(dados) ? dados : []));
   }
  
   function carregarNotas() {
     fetch(`${API}/notas-fiscais/`, { headers: authHeaders() })
-      .then((resposta) => {
-        if (resposta.status === 401) {
-          sair();
-          return [];
-        }
-        return resposta.json();
-      })
-      .then((dados) => setNotas(dados));
+      .then(lerLista)
+      .then(setNotas)
+      .catch(() => setNotas([]));
   }
  
   function carregarMovimentacoes() {
     fetch(`${API}/movimentacoes/`, { headers: authHeaders() })
-      .then((resposta) => (resposta.ok ? resposta.json() : []))
-      .then((dados) => setMovimentacoes(dados))
+      .then(lerLista)
+      .then(setMovimentacoes)
       .catch(() => setMovimentacoes([]));
   }
  
@@ -254,7 +257,7 @@ function App() {
         setErroNf("A quantidade de cada item deve ser maior que zero");
         return;
       }
-      if (exigeLote(item.produto_id) && !item.lote.trim()) {
+      if (exigeLote(item.produto_id) && !(item.lote || "").trim()) {
         setErroNf("Informe o lote dos itens que exigem controle de lote");
         return;
       }
@@ -570,6 +573,7 @@ function App() {
                           <th>Produto</th>
                           <th>Quantidade</th>
                           <th>Valor unitário (R$)</th>
+                          <th>Lote</th>
                           <th>Total do item (R$)</th>
                           <th></th>
                         </tr>
@@ -610,6 +614,25 @@ function App() {
                                 value={item.valor_unitario}
                                 onChange={(e) =>
                                   atualizarItem(indice, "valor_unitario", e.target.value)
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                value={item.lote || ""}
+                                onChange={(e) =>
+                                  atualizarItem(indice, "lote", e.target.value)
+                                }
+                                placeholder={
+                                  exigeLote(item.produto_id)
+                                    ? "obrigatório"
+                                    : "opcional"
+                                }
+                                className={
+                                  exigeLote(item.produto_id) &&
+                                  !(item.lote || "").trim()
+                                    ? "campo-pendente"
+                                    : ""
                                 }
                               />
                             </td>
