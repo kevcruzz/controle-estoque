@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, update
  
 from app.database import get_session_tenant
-from app.models import Movimentacao, Produto, TipoMovimentacao
+from app.models import Movimentacao, Produto, TipoMovimentacao, Empresa
 from app.schemas import MovimentacaoCriar, MovimentacaoLer
 from app.security import usuario_atual, exigir_papel
 from app.tenant import buscar_do_tenant
@@ -27,6 +27,16 @@ async def criar_movimentacao(
     produto = buscar_do_tenant(session, Produto, dados.produto_id, empresa_id)
     if produto is None:
         raise HTTPException(status_code=404, detail="Produto nao encontrado")
+ 
+    empresa = session.get(Empresa, empresa_id)
+    exige_lote = (empresa is not None and empresa.exige_lote) or produto.controla_lote
+    lote = (dados.lote or "").strip() or None
+ 
+    if exige_lote and dados.tipo == TipoMovimentacao.entrada and lote is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"O produto '{produto.nome}' exige informar o lote na entrada.",
+        )
  
     if dados.tipo == TipoMovimentacao.entrada:
         comando = (
@@ -58,6 +68,7 @@ async def criar_movimentacao(
         tipo=dados.tipo,
         quantidade=dados.quantidade,
         motivo=dados.motivo,
+        lote=lote,
     )
     session.add(movimentacao)
  

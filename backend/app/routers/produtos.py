@@ -46,6 +46,7 @@ async def criar_produto(
         nome=dados.nome,
         unidade=dados.unidade,
         estoque_minimo=dados.estoque_minimo,
+        controla_lote=dados.controla_lote,
         categoria_id=dados.categoria_id,
     )
     session.add(produto)

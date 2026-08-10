@@ -12,6 +12,8 @@ class Empresa(SQLModel, table=True):
     nome: str = Field(index=True)
     cnpj: Optional[str] = Field(default=None, index=True)
     ativa: bool = Field(default=True)
+    # Preferencia da empresa: cobrar lote em toda entrada de mercadoria
+    exige_lote: bool = Field(default=False)
     criado_em: datetime = Field(default_factory=datetime.utcnow)
  
  
@@ -38,6 +40,10 @@ class Produto(SQLModel, table=True):
     unidade: str = Field(default="un")
     estoque_minimo: int = Field(default=0)
     saldo: int = Field(default=0)
+    # Marca que ESTE item trabalha com lote, mesmo que a empresa nao exija
+    # em geral. O lote em si nao mora aqui: um produto pode ter varios
+    # lotes em estoque ao mesmo tempo.
+    controla_lote: bool = Field(default=False)
     categoria_id: Optional[int] = Field(default=None, foreign_key="categoria.id")
  
  
@@ -53,6 +59,7 @@ class Movimentacao(SQLModel, table=True):
     tipo: TipoMovimentacao
     quantidade: int
     motivo: Optional[str] = Field(default=None)
+    lote: Optional[str] = Field(default=None, index=True)
     criado_em: datetime = Field(default_factory=datetime.utcnow, index=True)
  
  
@@ -74,6 +81,7 @@ class ItemNotaFiscal(SQLModel, table=True):
     quantidade: int
     valor_unitario: float
     valor_total: float
+    lote: Optional[str] = Field(default=None, index=True)
  
  
 class Usuario(SQLModel, table=True):

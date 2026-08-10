@@ -20,6 +20,7 @@ class ProdutoCriar(SQLModel):
     nome: str
     unidade: str = "un"
     estoque_minimo: int = 0
+    controla_lote: bool = False
     categoria_id: Optional[int] = None
  
  
@@ -29,7 +30,8 @@ class ProdutoLer(SQLModel):
     nome: str
     unidade: str
     estoque_minimo: int
-    saldo: int 
+    saldo: int
+    controla_lote: bool = False
     categoria_id: Optional[int]
  
  
@@ -38,6 +40,7 @@ class MovimentacaoCriar(SQLModel):
     tipo: TipoMovimentacao
     quantidade: int
     motivo: Optional[str] = None
+    lote: Optional[str] = None
  
  
 class MovimentacaoLer(SQLModel):
@@ -46,6 +49,7 @@ class MovimentacaoLer(SQLModel):
     tipo: TipoMovimentacao
     quantidade: int
     motivo: Optional[str]
+    lote: Optional[str] = None
     criado_em: datetime
  
  
@@ -53,6 +57,7 @@ class ItemNotaFiscalCriar(SQLModel):
     produto_id: int
     quantidade: int
     valor_unitario: float
+    lote: Optional[str] = None
  
  
 class NotaFiscalCriar(SQLModel):
@@ -68,6 +73,7 @@ class ItemNotaFiscalLer(SQLModel):
     quantidade: int
     valor_unitario: float
     valor_total: float
+    lote: Optional[str] = None
  
  
 class NotaFiscalLer(SQLModel):
