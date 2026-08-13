@@ -27,6 +27,13 @@ TABELAS_TENANT = [
     "movimentacao",
     "notafiscal",
     "itemnotafiscal",
+    "fornecedor",
+    "pedidocompra",
+    "itempedidocompra",
+    "fichatecnica",
+    "itemfichatecnica",
+    "ordemproducao",
+    "consumoordem",
 ]
  
 # Tabelas onde o RLS precisa ficar desligado. A lista existe para DESFAZER
@@ -35,6 +42,17 @@ TABELAS_SEM_RLS = ["usuario"]
  
  
 def criar_tabelas():
+    """
+    Cria as tabelas que ainda nao existem.
+ 
+    Mantido apenas para desenvolvimento local com SQLite, onde e pratico
+    subir o banco do zero. Em PostgreSQL quem manda no schema e o Alembic:
+    'alembic upgrade head' aplica as migrations na ordem certa e sabe
+    lidar com colunas novas em tabelas existentes - coisa que o
+    create_all nao faz.
+    """
+    if USA_POSTGRES:
+        return
     SQLModel.metadata.create_all(engine)
  
  

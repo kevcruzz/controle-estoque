@@ -20,6 +20,8 @@ from app.routers import (
     auth,
     notas_fiscais,
     empresas,
+    compras,
+    producao,
 )
 from app.websocket import gerenciador
  
@@ -73,6 +75,8 @@ app.include_router(produtos.router)
 app.include_router(movimentacoes.router)
 app.include_router(notas_fiscais.router)
 app.include_router(empresas.router)
+app.include_router(compras.router)
+app.include_router(producao.router)
  
  
 @app.get("/health")
