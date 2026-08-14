@@ -521,20 +521,3 @@ export function IndicadoresGerais({ produtos, notas, movimentacoes }) {
     </>
   );
 }
- 
-/* ---------- Módulos ainda não construídos ---------- */
-export function ModuloPendente({ nome, descricao, planejado }) {
-  return (
-    <div className="modulo-pendente">
-      <h2>{nome}</h2>
-      <p className="pendente-aviso">Módulo ainda não implementado.</p>
-      <p>{descricao}</p>
-      <p className="pendente-titulo">Previsto para este módulo:</p>
-      <ul>
-        {planejado.map((item) => (
-          <li key={item}>{item}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}

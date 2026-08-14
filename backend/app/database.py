@@ -121,13 +121,22 @@ def get_session_tenant(usuario: dict = Depends(usuario_atual)):
     Sessao ja amarrada a empresa do usuario logado.
  
     Declara ao Postgres qual empresa esta falando; as policies de RLS
-    usam esse valor. set_config com parametro evita SQL injection, e o
-    terceiro argumento (true) limita o efeito a transacao atual.
+    usam esse valor. set_config com parametro evita SQL injection.
     """
     with Session(engine) as session:
         if USA_POSTGRES:
+            # O terceiro argumento do set_config e "is_local".
+            #
+            # Com true, o valor vale apenas ate o fim da transacao atual. Isso
+            # quebra qualquer leitura feita DEPOIS de um commit (por exemplo
+            # session.refresh): a transacao nova nao tem empresa definida, o
+            # RLS nao devolve a linha e o SQLAlchemy falha.
+            #
+            # Com false, o valor vale enquanto a conexao estiver aberta, e a
+            # conexao pertence a esta requisicao. O isolamento continua
+            # garantido e as leituras pos-commit funcionam.
             session.exec(
-                text("SELECT set_config('app.empresa_id', :valor, true)").bindparams(
+                text("SELECT set_config('app.empresa_id', :valor, false)").bindparams(
                     valor=str(usuario["empresa_id"])
                 )
             )

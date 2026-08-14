@@ -858,3 +858,47 @@ select option {
   background: rgba(34, 211, 238, 0.1);
   border: 1px solid rgba(34, 211, 238, 0.3);
 }
+ 
+.badge-rascunho {
+  color: var(--texto-suave);
+  background: rgba(142, 134, 168, 0.1);
+  border: 1px solid var(--borda);
+}
+ 
+.badge-aprovado,
+.badge-planejada {
+  color: var(--ciano);
+  background: rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+}
+ 
+.badge-recebido,
+.badge-concluida {
+  color: var(--ok);
+  background: rgba(45, 212, 167, 0.11);
+  border: 1px solid rgba(45, 212, 167, 0.32);
+}
+ 
+.badge-cancelada,
+.badge-cancelado {
+  color: var(--alerta);
+  background: rgba(251, 95, 141, 0.11);
+  border: 1px solid rgba(251, 95, 141, 0.32);
+}
+ 
+.badge-em_producao {
+  color: #f0a020;
+  background: rgba(240, 160, 32, 0.1);
+  border: 1px solid rgba(240, 160, 32, 0.32);
+}
+ 
+.nota-rodape {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--texto-suave);
+  line-height: 1.7;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--borda);
+  max-width: 720px;
+}

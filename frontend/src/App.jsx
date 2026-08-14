@@ -7,8 +7,9 @@ import {
   IndicadoresGerais,
   IndicadoresEstoque,
   IndicadoresFinanceiro,
-  ModuloPendente,
 } from "./Indicadores";
+import Compras from "./Compras";
+import Producao from "./Producao";
  
 function App() {
   const [token, setToken] = useState(localStorage.getItem("token"));
@@ -44,6 +45,16 @@ function App() {
   const [movimentacoes, setMovimentacoes] = useState([]);
   const [menuAberto, setMenuAberto] = useState(false);
   const [empresa, setEmpresa] = useState(null);
+ 
+  const [fornecedores, setFornecedores] = useState([]);
+  const [pedidos, setPedidos] = useState([]);
+  const [fichas, setFichas] = useState([]);
+  const [ordens, setOrdens] = useState([]);
+  const [erroCompras, setErroCompras] = useState("");
+  const [secaoCompras, setSecaoCompras] = useState("");
+  const [sucessoCompras, setSucessoCompras] = useState("");
+  const [erroProducao, setErroProducao] = useState("");
+  const [sucessoProducao, setSucessoProducao] = useState("");
  
   // Cabeçalho de autenticação, reaproveitado em todas as requisições
   function authHeaders() {
@@ -120,11 +131,84 @@ function App() {
     return Boolean(empresa?.exige_lote || produto?.controla_lote);
   }
  
+  function carregarCompras() {
+    fetch(`${API}/compras/fornecedores`, { headers: authHeaders() })
+      .then(lerLista)
+      .then(setFornecedores)
+      .catch(() => setFornecedores([]));
+    fetch(`${API}/compras/pedidos`, { headers: authHeaders() })
+      .then(lerLista)
+      .then(setPedidos)
+      .catch(() => setPedidos([]));
+  }
+ 
+  function carregarProducao() {
+    fetch(`${API}/producao/fichas`, { headers: authHeaders() })
+      .then(lerLista)
+      .then(setFichas)
+      .catch(() => setFichas([]));
+    fetch(`${API}/producao/ordens`, { headers: authHeaders() })
+      .then(lerLista)
+      .then(setOrdens)
+      .catch(() => setOrdens([]));
+  }
+ 
+  // Transforma a resposta de erro do backend em uma frase legivel.
+  //
+  // O FastAPI responde de duas formas: erros de regra de negocio trazem
+  // "detail" como texto, e erros de validacao trazem "detail" como uma
+  // LISTA de campos com problema. Sem tratar os dois, o usuario via
+  // "[object Object]" ou uma mensagem generica que nao ajudava.
+  function descreverErro(dados, status) {
+    const detalhe = dados?.detail;
+ 
+    if (typeof detalhe === "string") return detalhe;
+ 
+    if (Array.isArray(detalhe)) {
+      const campos = detalhe
+        .map((e) => {
+          const caminho = Array.isArray(e.loc) ? e.loc[e.loc.length - 1] : "";
+          return caminho ? `${caminho}: ${e.msg}` : e.msg;
+        })
+        .filter(Boolean);
+      if (campos.length) return "Verifique os campos — " + campos.join("; ");
+    }
+ 
+    return `Não foi possível concluir a operação (erro ${status}).`;
+  }
+ 
+  // Envia dados e trata a resposta de forma uniforme: em caso de erro,
+  // mostra a mensagem que o backend devolveu em vez de uma generica.
+  function enviar(caminho, corpo, metodo, aoDarCerto, definirErro, definirSucesso, mensagem) {
+    definirErro("");
+    definirSucesso("");
+    fetch(`${API}${caminho}`, {
+      method: metodo,
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: corpo ? JSON.stringify(corpo) : undefined,
+    })
+      .then(async (resposta) => {
+        if (!resposta.ok) {
+          const dados = await resposta.json().catch(() => ({}));
+          throw new Error(descreverErro(dados, resposta.status));
+        }
+        return resposta.json();
+      })
+      .then(() => {
+        definirSucesso(mensagem);
+        if (aoDarCerto) aoDarCerto();
+        carregarTudo();
+      })
+      .catch((e) => definirErro(e.message));
+  }
+ 
   function carregarTudo() {
     carregarProdutos();
     carregarNotas();
     carregarMovimentacoes();
     carregarEmpresa();
+    carregarCompras();
+    carregarProducao();
   }
  
   useEffect(() => {
@@ -175,7 +259,7 @@ function App() {
         setUnidade("un");
         setEstoqueMinimo(0);
         setControlaLote(false);
-        carregarProdutos();
+        carregarTudo();
       })
       .catch((e) => setErro(e.message));
   }
@@ -185,7 +269,7 @@ function App() {
       method: "DELETE",
       headers: authHeaders(),
     })
-      .then(() => carregarProdutos())
+      .then(() => carregarTudo())
       .catch((e) => setErro(e.message));
   }
  
@@ -219,7 +303,7 @@ function App() {
         setMovQuantidade(0);
         setMovMotivo("");
         setMovLote("");
-        carregarProdutos();
+        carregarTudo();
       })
       .catch((e) => setErroMov(e.message));
   }
@@ -297,7 +381,7 @@ function App() {
         setNfFornecedor("");
         setNfData("");
         setNfItens([{ produto_id: "", quantidade: 0, valor_unitario: 0, lote: "" }]);
-        carregarProdutos();
+        carregarTudo();
         carregarNotas();
       })
       .catch((e) => setErroNf(e.message));
@@ -705,32 +789,59 @@ function App() {
         )}
  
         {modulo === "compras" && (
-          <ModuloPendente
-            nome="Compras"
-            descricao="Ainda não existe backend para este módulo. Hoje as entradas de mercadoria são registradas pelo módulo Financeiro, ao lançar a nota fiscal."
-            planejado={[
-              "Cadastro de fornecedores",
-              "Pedido de compra e aprovação",
-              "Cotação entre fornecedores",
-              "Recebimento vinculado ao pedido",
-              "Prazo de entrega e atrasos",
-              "Histórico de preços por item",
-            ]}
+          <Compras
+            fornecedores={fornecedores}
+            pedidos={pedidos}
+            produtos={produtos}
+            ehAdmin={ehAdmin}
+            erro={erroCompras}
+            sucesso={sucessoCompras}
+            erroSecao={secaoCompras}
+            sucessoSecao={secaoCompras}
+            aoCriarFornecedor={(dados, limpar) => {
+              setSecaoCompras("fornecedor");
+              enviar("/compras/fornecedores", dados, "POST", limpar,
+                setErroCompras, setSucessoCompras, "Fornecedor cadastrado.");
+            }}
+            aoCriarPedido={(dados, limpar) => {
+              setSecaoCompras("pedido");
+              enviar("/compras/pedidos", dados, "POST", limpar,
+                setErroCompras, setSucessoCompras, "Pedido criado.");
+            }}
+            aoAprovar={(id) => {
+              setSecaoCompras("pedido");
+              enviar(`/compras/pedidos/${id}/aprovar`, null, "PATCH", null,
+                setErroCompras, setSucessoCompras, "Pedido aprovado.");
+            }}
+            aoCancelar={(id) => {
+              setSecaoCompras("pedido");
+              enviar(`/compras/pedidos/${id}/cancelar`, null, "PATCH", null,
+                setErroCompras, setSucessoCompras, "Pedido cancelado.");
+            }}
           />
         )}
  
         {modulo === "producao" && (
-          <ModuloPendente
-            nome="Produção"
-            descricao="Ainda não existe backend para este módulo."
-            planejado={[
-              "Ficha técnica (lista de materiais)",
-              "Ordem de produção",
-              "Baixa automática de insumos",
-              "Apontamento de produção",
-              "Perdas e refugo",
-              "Custo por ordem",
-            ]}
+          <Producao
+            fichas={fichas}
+            ordens={ordens}
+            produtos={produtos}
+            ehAdmin={ehAdmin}
+            erro={erroProducao}
+            sucesso={sucessoProducao}
+            aoCriarFicha={(dados, limpar) =>
+              enviar("/producao/fichas", dados, "POST", limpar,
+                setErroProducao, setSucessoProducao, "Ficha técnica salva.")
+            }
+            aoCriarOrdem={(dados, limpar) =>
+              enviar("/producao/ordens", dados, "POST", limpar,
+                setErroProducao, setSucessoProducao, "Ordem aberta.")
+            }
+            aoConcluir={(id) =>
+              enviar(`/producao/ordens/${id}/concluir`, null, "POST", null,
+                setErroProducao, setSucessoProducao,
+                "Ordem concluída: insumos baixados e produto disponível.")
+            }
           />
         )}
  

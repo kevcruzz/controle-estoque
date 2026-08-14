@@ -51,7 +51,7 @@ def cadastrar_empresa(
     # O RLS exige saber de qual empresa e a linha que vamos inserir
     if USA_POSTGRES:
         session.exec(
-            text("SELECT set_config('app.empresa_id', :valor, true)").bindparams(
+            text("SELECT set_config('app.empresa_id', :valor, false)").bindparams(
                 valor=str(empresa.id)
             )
         )
